@@ -1,0 +1,5 @@
+aiohttp
+logzero
+click
+requests
+beautifulsoup4
