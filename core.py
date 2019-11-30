@@ -7,8 +7,9 @@ import click as click
 
 from contextsingleton import ContextSingleton
 from datahandler import DataHandler
-from example import PrintNumbersProsumer
-from utilities import my_handler
+from example import PrintNumbersProducer
+from example2 import ConcurrencyMaxProducer
+from utilities import my_handler, gather_prosumer
 
 context = ContextSingleton.get()
 context.data = DataHandler()
@@ -19,10 +20,14 @@ logger = context.logger
 
 
 async def start():
-    p = PrintNumbersProsumer(10, context)
-    # async with aiohttp.ClientSession() as session:
-    await asyncio.gather(
-        context.loop.create_task(p.produce())
+    """all tasks here will run until completion"""
+
+    for i in range(1000):
+        await context.data.queue.put(i)
+    await context.data.queue.put(None)
+    await gather_prosumer(
+        PrintNumbersProducer(10, context),
+        ConcurrencyMaxProducer(context=context)
     )
 
 
@@ -42,6 +47,7 @@ def core(save_interval):
 
     try:
         context.loop.run_until_complete(start())
+        context.stats._end_time = time.time()
         logger.info('All tasks have completed!')
     except asyncio.CancelledError:
         print('All tasks have been canceled')
