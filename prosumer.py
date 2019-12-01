@@ -1,4 +1,5 @@
 import abc
+import asyncio
 from abc import abstractmethod
 
 from contextsingleton import ContextSingleton
@@ -12,17 +13,41 @@ class Prosumer(metaclass=abc.ABCMeta):
         self.data = data
         self.context = context
         self.logger = context.logger
-
-    async def do(self):
-        """start the produce or consume process"""
-        if isinstance(self, Producer):
-            await self.produce()
-        if isinstance(self, Consumer):
-            await self.consume()
+        self.queue = asyncio.Queue(loop=context.loop)
+        self.loop = context.loop
+        self.context.prosumers.add(self)
 
     @property
     @abstractmethod
     def name(self):
+        pass
+
+    async def run(self):
+        """fill the queue for the worker then start it"""
+        await self.fill_queue()
+        for _ in range(self.max_concurrent):
+            self.tasks.add(self.loop.create_task(self.worker()))
+        await asyncio.gather(*self.tasks)
+        await self.queue.join()
+        self.logger.info('%s is finished', self.name)
+
+    @abstractmethod
+    async def fill_queue(self):
+        pass
+
+    async def worker(self):
+        """get each item from the queue and pass it to self.work"""
+        while self.context.running:
+            if self.queue.empty():
+                break
+            data = await self.queue.get()
+            await self.work(data)
+            self.queue.task_done()
+            self.append()
+
+    @abstractmethod
+    async def work(self, *args):
+        """do business logic on each enqueued item"""
         pass
 
     def append(self, n=1):
@@ -34,37 +59,3 @@ class Prosumer(metaclass=abc.ABCMeta):
 
     def __str__(self):
         return self.name
-
-
-class Producer(Prosumer, metaclass=abc.ABCMeta):
-    """A Consumer and Producer pair"""
-
-    @abc.abstractmethod
-    async def produce(self):
-        pass
-
-    @abc.abstractmethod
-    async def _produce(self, *args):
-        """Implement producer logic here"""
-        pass
-
-    def add_task(self, args=None):
-        t = self.context.loop.create_task(self._produce(args))
-        self.tasks.add(t)
-
-
-class Consumer(Prosumer, metaclass=abc.ABCMeta):
-    """A Consumer and Producer pair"""
-
-    @abc.abstractmethod
-    async def consume(self):
-        pass
-
-    @abc.abstractmethod
-    async def _consume(self, *args):
-        """Implement producer logic here"""
-        pass
-
-    def add_task(self, args=None):
-        t = self.context.loop.create_task(self._consume(args))
-        self.tasks.add(t)

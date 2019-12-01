@@ -1,9 +1,10 @@
 import asyncio
+import random
 
-from prosumer import Producer
+from prosumer import Prosumer
 
 
-class ConcurrencyMaxProducer(Producer):
+class ConcurrencyMaxProducer(Prosumer):
     """print numbers asynchronously"""
 
     def __init__(self, data=None, context=None):
@@ -12,7 +13,6 @@ class ConcurrencyMaxProducer(Producer):
     async def produce(self):
         self.logger.debug('%s starting...', self.name)
         while self.context.running:
-
             if len(self.tasks) >= self.max_concurrent:
                 self.logger.debug('pausing %s tasks until current %s tasks complete', self.name, self.name)
                 # Wait for some tasks to finish before adding a new one
@@ -28,7 +28,13 @@ class ConcurrencyMaxProducer(Producer):
         self.logger.debug('[%s] finished', self.name)
         self.context.prosumers.remove(self)
 
-    async def _produce(self, number):
+    async def fill_queue(self):
+        for i in range(1, self.data):
+            await self.queue.put(i)
+
+    async def work(self, number):
+        sleep_time = random.randint(1, 10)
+        await asyncio.sleep(sleep_time)
         self.logger.info(number)
         self.append()
 

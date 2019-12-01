@@ -22,12 +22,9 @@ logger = context.logger
 async def start():
     """all tasks here will run until completion"""
 
-    for i in range(1000):
-        await context.data.queue.put(i)
-    await context.data.queue.put(None)
     await gather_prosumer(
         PrintNumbersProducer(10, context),
-        ConcurrencyMaxProducer(context=context)
+        ConcurrencyMaxProducer(1000, context)
     )
 
 

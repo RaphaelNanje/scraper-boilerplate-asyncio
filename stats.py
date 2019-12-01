@@ -19,21 +19,19 @@ class Stats(Counter):
         return self._end_time or time.time()
 
     def get_count_strings(self):
-        string = str()
+        string = '\n'
         for k, v in self.items():
             string += f'\t\t\t    {k} count: {v}\n'
             string += f'\t\t\t    {k} per second: {v / self.elapsed_time}\n'
+        for p in self.context.prosumers:
+            string += f'\t\t\t    {p.name} queue: {p.queue.qsize()}\n'
+            string += f'\t\t\t    {p.name} workers: {p.max_concurrent}\n'
         return string.rstrip()
 
     def get_stats_string(self):
-        task_string = '\n' + '\n'.join(
-            [f'\t\t\t    [{p.name}] tasks left: {len(p.tasks)}' for p in self.context.prosumers]
-        )
-        return ('\n\t\t\t    elapsed time: {time:.6f} secs'
-                '\n\t\t\t    queue size: {queue}').format(
-            time=self.elapsed_time,
-            queue=self.context.data.queue.qsize()
-        ) + task_string + self.get_count_strings()
+        return '\n\t\t\t    elapsed time: {time:.6f} secs'.format(
+            time=self.elapsed_time
+        ) + self.get_count_strings()
 
     @property
     def elapsed_time(self):

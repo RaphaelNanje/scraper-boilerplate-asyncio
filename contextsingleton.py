@@ -6,7 +6,6 @@ import logzero
 
 from settings import Settings
 from stats import Stats
-from utilities import MyCounter
 
 if TYPE_CHECKING:
     from datahandler import DataHandler
@@ -23,7 +22,6 @@ class ContextSingleton:
         data: 'DataHandler'
         loop: AbstractEventLoop
         prosumers: 'Set[Prosumer]' = set()
-        counter = MyCounter()
 
         def __init__(self) -> None:
             self.stats = Stats(self)
